@@ -1,0 +1,135 @@
+---
+title: "run_analysis"
+author: "Fabiano Andrade Lima"
+date: "January 14, 2015"
+output: html_document
+---
+# Introduction 
+
+For details about the project, please, see [README](./README.md).
+
+# Initial procedures
+
+Here we are going to create our *data* directory and download the required *.zp* file, and them, load the packages we will use for this project.
+
+First, we need to create a "data" dicrectory for our files. I've set de working directory as the ".". If you want to change it, just put the wanted directory into the `setwd` on the *run_analysis.R* script.
+
+```{r}
+if (!file.exists("./data")){
+  dir.create("./data")
+}
+
+packages <- c("data.table", "dplyr", "tidyr")
+sapply(packages, require, character.only=TRUE, quietly=TRUE)
+
+url <- "https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip"
+fileName <- "./data/project_dataset.zip"
+```
+
+
+Now, time to download the *.zip* file. If the file aready exists in the right place (`r fileName`), we will skip the download for saving time.
+
+```{r}
+if (!file.exists(fileName)){
+  download.file(url, destfile = fileName, method = "curl")
+}
+dateDownload = file.info(fileName)[["mtime"]]
+```
+
+# Reading data
+
+Ok. file downloaded with date `r dateDownload`. Now it's time to load and merge the needed files. Instead of extracting all files from de zip file, I've used a `unz` connection. I'm not shure if it was a good choice in terms of performance (may be it processes the entire zip file for each file I try to read) but, as the dataset wasn't that big, I made the choice of not landing the files inside de zip into my hard drive.
+
+For merging the training and testing datasets, I used `rbindlist` with a `list` consisting of two `read.table` returned objects.
+
+```{r}
+subjects <- rbindlist(list(
+        read.table(unz(fileName, "UCI HAR Dataset/train/subject_train.txt", encoding = getOption("encoding"))),
+        read.table(unz(fileName, "UCI HAR Dataset/test/subject_test.txt", encoding = getOption("encoding")))
+    )
+)
+
+activities <- rbindlist(list(
+      read.table(unz(fileName, "UCI HAR Dataset/train/y_train.txt", encoding = getOption("encoding"))),
+      read.table(unz(fileName, "UCI HAR Dataset/test/y_test.txt", encoding = getOption("encoding")))
+  )
+)
+
+measurements_full <- rbindlist(list(
+  read.table(unz(fileName, "UCI HAR Dataset/train/X_train.txt", encoding = getOption("encoding"))),
+  read.table(unz(fileName, "UCI HAR Dataset/test/X_test.txt", encoding = getOption("encoding")))
+  )
+)
+
+features <- read.table(unz(fileName, "UCI HAR Dataset/features.txt", encoding = getOption("encoding")))
+activity_labels <- read.table(unz(fileName, "UCI HAR Dataset/activity_labels.txt", encoding = getOption("encoding")))
+```
+
+# Naming variables
+
+One I have all files I need loaded, and knowing that the files doesn`t have headers,  I'll set the variables names.
+
+```{r}
+setnames(activities,c("activity_code")) 
+setnames(subjects,c("subject")) 
+setnames(activity_labels, c("activity_code", "activity"))
+setnames(features,c("num", "nom"))
+activity_labels <- tbl_df(activity_labels)
+```
+
+For setting the names of *measurements_full*, we use the *features* data table as a parameter for the `as.vector` with the `setnames` function.
+
+```{r}
+setnames(measurements_full,as.vector(features[[2]]))
+```
+
+Until now, the *measurements_full* has all 561 variables. Now, we will select only the *mean* and *std* measures. We will use a vector filtered from the features.txt file as parameter for the `[` function on the measurements_full data.table.
+
+```{r}
+selected_features <- as.vector(features[grepl("mean\\(\\)", features$nom) | grepl("std\\(\\)", features$nom),][[2]])
+measurements <- measurements_full[,selected_features, with=FALSE]
+```
+
+After applying the filtering, the resulting data frame looks like this:
+
+```{r}
+names(measurements)
+```
+
+# Labeling activities
+
+Time to add the labels of activities and at the same time, removing the *activity_code* field (or variable, if you wish )
+
+```{r}
+activity_labels <- tbl_df(activity_labels)
+full_dataset <- tbl_df(data.table(subjects, activities, measurements))
+final_dataset <- select(left_join(full_dataset, activity_labels, c("activity_code"), copy=TRUE),-(activity_code))
+head(final_dataset)
+```
+
+# Making a tidy dataset
+
+For this task, we piped a series of commands using the dplyr's `%>%` functionality.
+
+First, we group our dataset by "activity" and "subject". Then, summarise all columns. Once it's done, we reshape it with `gather` creating a new column: "measure". Now it's time to breakdown the informations on the recently created "measure" column. For this, we use a `separate` that will give us tree columns: measure, function and axis. "measure" and "axis" are fine, but the function needs to become columns. For this, we use `spread` to transform the "function"" column into the "mean" and "std" columns.
+
+```{r}
+dtidy <- final_dataset %>%
+  group_by(activity, subject) %>%
+  summarise_each(funs(mean)) %>%
+  gather(measure, value, -subject, -activity) %>%
+  separate(measure, c("measure", "function", "axis")) %>%
+  spread("function","value")
+
+head(dtidy)
+```
+
+# Writing down the results
+
+At the end of the day, this is what we wanted. The final tidy dataset exported to the result.txt file. A detailed description of the contents can be found in the [CoodBook](./CodeBook.md)
+
+```{r}
+write.table(dtidy, file="./data/result.txt", row.name=FALSE)
+```
+
+

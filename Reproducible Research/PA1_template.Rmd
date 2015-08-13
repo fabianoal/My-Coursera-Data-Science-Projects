@@ -1,0 +1,98 @@
+---
+title: "Reproducible Research: Peer Assessment 1"
+output: 
+  html_document:
+    keep_md: true
+---
+
+
+## Loading and preprocessing the data
+
+For this task, we'll be using a unz connection. So whoever wants to reproduce this analysis doesn't have to carry about uncompressing the file.
+
+```{r settingup, results=FALSE, message=FALSE}
+
+setwd("/Users/fabianoal/Documents/Coursera/Repos/RepData_PeerAssessment1")
+packages <- c("data.table", "dplyr", "lattice", "lubridate", "RColorBrewer")
+sapply(packages, require, character.only=TRUE, quietly=TRUE)
+fileName <- "./activity.zip"
+f <- read.csv(unz(fileName, "activity.csv", encoding = getOption("encoding")), stringsAsFactors=FALSE)
+f$date <- as.Date(f$date)
+```
+
+## What is mean total number of steps taken per day?
+
+We'll be using the dplyr to calculate the amount of steps per day, and them, plot a histogram.
+
+```{r firstanalysis}
+f.totalsteps <- f %>%
+  filter(complete.cases(.)) %>%
+  group_by(date) %>%
+  summarise(amountSteps = sum(steps))
+
+barplot(f.totalsteps$amountSteps, names=f.totalsteps$date, xlab="Amount of Steps", col="#1d91c0", main="Amount of Steps per Date")
+```
+
+The mean of steps per day is `r format(mean(f.totalsteps$amountSteps), digits=0, scientific=FALSE)` and the median is `r median(f.totalsteps$amountSteps)`.
+
+## What is the average daily activity pattern?
+
+Now, we summarise the data not by date, but by interval so we can see the activity daily pattern.
+
+```{r secondanalysis}
+f.actvPattern <- f %>%
+  filter(complete.cases(.)) %>%
+  group_by(interval) %>%
+  summarise(meanSteps = mean(steps))
+
+
+xyplot(f.actvPattern$meanSteps~f.actvPattern$interval, ylab="Average Amount of Steps", xlab="Interval", type="b", col="#1d91c0", main="Daily Activity Pattern")
+
+```
+
+The 5-minute interval that, in average, has the highest number of steps is the `r arrange(f.actvPattern, desc(meanSteps))[1, "interval"]`th.
+
+## Imputing missing values
+
+The original dataset has **`r sum(is.na(f$steps))`** NAs values. Thus, for filling up the missing values, we will use the average number of steps for that specific interval.
+
+To do this, we can use the *f.actvPattern* data frame created on the *secondanalysis* chunk.
+
+```{r thirdanalysis, results="hide"}
+
+ff <- merge(f,f.actvPattern, all.x = TRUE) %>%
+  mutate(filledSteps = ifelse (is.na(steps), meanSteps, steps))
+
+```
+
+Ok. Now, let's do another histogram to see if the introduction of values for the NA observations has caused some changes...
+
+
+```{r fourthanalysis_part_two}
+ff.totalsteps <- ff %>%
+  group_by(date) %>%
+  summarise(filledAmountSteps = trunc(sum(filledSteps)), amountsteps=sum(steps))
+
+barplot(ff.totalsteps$filledAmountSteps, names=ff.totalsteps$date, xlab="Amount of Steps", col="#1d91c0", main="Amount of Steps per Day - Filled NAs")
+```
+
+Now, let's see how the values has changed with the filling of NAs values.
+
+* Mean of steps from filled dataset: `r format(mean(ff.totalsteps$filledAmountSteps), digits=0, scientific = FALSE)`
+* Mean of steps from original dataset: `r format(mean(f.totalsteps$amountSteps), digits=0, scientific = FALSE)`
+* Median of steps from filled dataset: `r format(median(ff.totalsteps$filledAmountSteps),digits=0, scientific = FALSE)`
+* Median of steps from original dataset: `r format(median(f.totalsteps$amountSteps),digits=0, scientific = FALSE)`
+
+## Are there differences in activity patterns between weekdays and weekends?
+
+Now, for showing the differences between weekdays and weekends, we create a new variable *tweekday* on the filled data set which consists of a factor with two levels, then we take the average steps per *interval* and *tweekday* so we can plot the timeseries showing de different behaviors.
+
+```{r fifithanalysis}
+ff$tweekday <- factor(ifelse(wday(ff$date) %in% 1:5, 'weekday','weekend'))
+
+ff.actvPattern <- ff %>%
+    group_by(tweekday, interval) %>%
+    summarise(meanSteps = mean(filledSteps))
+trellis.par.set(strip.background=list(col="#7fcdbb"))
+xyplot(meanSteps ~ interval | tweekday, data=ff.actvPattern, ylab="Average Number of Steps", xlab="Interval", type="b", col="#1d91c0", main="Daily Activity Pattern", layout = c(1,2))
+```
