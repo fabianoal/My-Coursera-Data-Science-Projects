@@ -1,0 +1,72 @@
+---
+title: "Central Limit Theorem Demonstration With Exponential Distributions"
+author: "Fabiano A. Lima"
+date: "18 de agosto de 2015"
+output: pdf_document
+---
+
+On this document, we're going to examinate the Central Limit Theorem with Exponential Distributions. The Central Limit Theorem states that, on large number of iid samples, the distribution of the means will fit the normal distribution.
+
+So, how would be the distribution of a sample of 40 observations usgin the exponential distribution?
+
+Lets take a look.
+
+```{r}
+library(ggplot2)
+def_theme <- theme(
+      panel.grid.minor = element_blank(), 
+      panel.background = element_rect(colour = "#FFFFFF", fill = "#FFFFFF"), 
+      panel.grid=element_line(colour = "#380F36"),
+      panel.grid.major = element_line(colour = "#EDE6E3")
+)
+
+x <- rexp(n=40, rate = 0.2)
+
+g <- qplot(x, geom="histogram")
+g <- g + labs(title="Histogram of Exponential Distribution Sample", x="Variable", y="Frequency")
+g <- g + geom_histogram(col="#084C61",  fill="#084C61",  alpha = .2)
+g <- g + annotate("text", x = 17, y = 4.8, label = paste("Variation:", formatC(var(x), digits = 2)))
+g <- g + annotate("text", x = 17, y = 4.6, label = paste("mean:",formatC(mean(x), digits = 2)))
+g <- g + def_theme
+g
+
+```
+
+As whe can see, it doesn't fit the normal distribution at all. But the Central Limit Theorem stats that if we kee drawing samples from a population and taking their mean, the distribution of the means will fit a normal distribution. 
+
+How "fast", samples drawn from a population with exponential distribution would center it's mean at population mean?
+
+To do this experiment, lets create a vector with ten thousand samples of 40 observations each. And then, lets do some math...
+
+```{r}
+n <- 1000
+means <- cumsum(rexp(n=40, rate = 0.2))/(1:n)
+
+g <- ggplot(data.frame(x = 1:n, y = means), aes(x = x, y = y))
+g <- g + geom_hline(yintercept = means[n - 1]) + geom_line(size = 2, color='#084C61')
+g <- g + labs(x = "Number of obs (samples n=40)", y = "Cumulative mean")
+g <- g + def_theme
+g <- g + annotate("text", x = 800, y = 6.9, label = paste("mean:",formatC(means[n - 1], digits = 2)))
+g
+```
+
+Now, lets see how it fits the normal distribution, with mean of 
+
+
+To see how it goes, lets experiment taking then means of 10 samples.
+
+
+```{r}
+x <- sapply(1:100, function(x) mean(rexp(n=40, rate=0.2)))
+var(x)
+hist(x)
+```
+
+Now we can see that the shape of the distribution goes quite along with that of the normal. Lets keep going and take a thousand samples.
+
+```{r}
+x <- sapply(1:1000, function(x) mean(rexp(n=40, rate=0.2)))
+hist(x)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
