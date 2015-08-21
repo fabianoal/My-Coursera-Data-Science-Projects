@@ -29,7 +29,15 @@ g <- g + annotate("text", x = 17, y = 4.8, label = paste("Variation:", formatC(v
 g <- g + annotate("text", x = 17, y = 4.6, label = paste("mean:",formatC(mean(x), digits = 2)))
 g <- g + def_theme
 g
+mean(x)
+length(x)
+```
 
+Although this sample size is too small, lets take a look on the variance parameter (by estimating it using a unbiased sample variance)
+
+```{r}
+unbiased_var = sum((x - mean(x))^2) / length(x) - 1
+sample_sd = sqrt(unbiased_var)
 ```
 
 As whe can see, it doesn't fit the normal distribution at all. But the Central Limit Theorem stats that if we kee drawing samples from a population and taking their mean, the distribution of the means will fit a normal distribution. 
