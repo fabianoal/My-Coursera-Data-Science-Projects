@@ -1,17 +1,11 @@
 ---
 title: "Central Limit Theorem Demonstration With Exponential Distributions"
 author: "Fabiano A. Lima"
-date: "18 de agosto de 2015"
+date: "august, 18th, 2015"
 output: pdf_document
 ---
 
-On this document, we're going to examinate the Central Limit Theorem with Exponential Distributions. The Central Limit Theorem states that, on large number of iid samples, the distribution of the means will fit the normal distribution.
-
-So, how would be the distribution of a sample of 40 observations usgin the exponential distribution?
-
-Lets take a look.
-
-```{r}
+```{r echo=F}
 library(ggplot2)
 def_theme <- theme(
       panel.grid.minor = element_blank(), 
@@ -19,62 +13,121 @@ def_theme <- theme(
       panel.grid=element_line(colour = "#380F36"),
       panel.grid.major = element_line(colour = "#EDE6E3")
 )
-
-x <- rexp(n=40, rate = 0.2)
-
-g <- qplot(x, geom="histogram")
-g <- g + labs(title="Histogram of Exponential Distribution Sample", x="Variable", y="Frequency")
-g <- g + geom_histogram(col="#084C61",  fill="#084C61",  alpha = .2)
-g <- g + annotate("text", x = 17, y = 4.8, label = paste("Variation:", formatC(var(x), digits = 2)))
-g <- g + annotate("text", x = 17, y = 4.6, label = paste("mean:",formatC(mean(x), digits = 2)))
-g <- g + def_theme
-g
-mean(x)
-length(x)
+obs <- 40
+r <- 0.2
 ```
 
-Although this sample size is too small, lets take a look on the variance parameter (by estimating it using a unbiased sample variance)
+
+# Introduction
+
+On this document, we're going to examine the Central Limit Theorem with Exponential Distribution. The Central Limit Theorem states that, on large number of iid samples, the distribution of the means tends to fit the normal distribution.
+
+Some theoretical concepts are important about exponential distribution to understand this analysis. 
+
+* mean = `1/lambda`;
+
+* variance = `1/lambda^2`
+
+* sd = mean
+
+# Sample Mean versus Theoretical Mean
+
+The Central Limit Theorem stats that if we keep drawing samples from a population and taking their mean, the distribution of the means will fit a normal distribution, and the mean will be approximately the population mean and the standard deviation will be approximately the population variance divided by the number of observations.
+
+In the case of the exponential distribution, the theoretical mean (the expected value, or E[X]) is 1/lambda, in our case, `1/0.2`, or `r 1/0.2`.
+
+Lets experiment and see how "fast", samples of `r obs` observations drawn from a population with exponential distribution would center at E[X] for `lambda = 0.2`?
+
 
 ```{r}
-unbiased_var = sum((x - mean(x))^2) / length(x) - 1
-sample_sd = sqrt(unbiased_var)
-```
+n <- 3000
 
-As whe can see, it doesn't fit the normal distribution at all. But the Central Limit Theorem stats that if we kee drawing samples from a population and taking their mean, the distribution of the means will fit a normal distribution. 
-
-How "fast", samples drawn from a population with exponential distribution would center it's mean at population mean?
-
-To do this experiment, lets create a vector with ten thousand samples of 40 observations each. And then, lets do some math...
-
-```{r}
-n <- 1000
-means <- cumsum(rexp(n=40, rate = 0.2))/(1:n)
+means <- cumsum(sapply(1:n, function(x) mean(rexp(n=obs, rate = r))))/(1:n)
 
 g <- ggplot(data.frame(x = 1:n, y = means), aes(x = x, y = y))
-g <- g + geom_hline(yintercept = means[n - 1]) + geom_line(size = 2, color='#084C61')
+g <- g + geom_hline(yintercept = 1/r) + geom_line(size = 2, color='#084C61')
 g <- g + labs(x = "Number of obs (samples n=40)", y = "Cumulative mean")
 g <- g + def_theme
-g <- g + annotate("text", x = 800, y = 6.9, label = paste("mean:",formatC(means[n - 1], digits = 2)))
+#g <- g + annotate("text", x = 800, y = 6.9, label = paste("mean:",formatC(means[n - 1], digits = 2)))
 g
 ```
 
-Now, lets see how it fits the normal distribution, with mean of 
+As we see, the trend to center at E[X] is quite clear, and using the CLT will be probably a good approximation to work with data which has exponential distributions.
 
+# Sample Variance versus Theoretical Variance
 
-To see how it goes, lets experiment taking then means of 10 samples.
+As we saw previously, the theoretical variance for a exponential distribution is `1/lambda^2`, in our case, `r 1/r^2`.
+
+To see how the samples variance compare to the theoretical variance, lets repeat the above simulation, but now, comparing the variance instead the mean.
 
 
 ```{r}
-x <- sapply(1:100, function(x) mean(rexp(n=40, rate=0.2)))
-var(x)
-hist(x)
+n <- 3000
+
+means <- cumsum(sapply(1:n, function(x) var(rexp(n=obs, rate = r))))/(1:n)
+
+g <- ggplot(data.frame(x = 1:n, y = means), aes(x = x, y = y))
+g <- g + geom_hline(yintercept = 1/r^2) + geom_line(size = 2, color='#084C61')
+g <- g + labs(x = "Number of obs (samples n=40)", y = "Cumulative mean")
+g <- g + def_theme
+#g <- g + annotate("text", x = 800, y = 6.9, label = paste("mean:",formatC(means[n - 1], digits = 2)))
+g
 ```
 
-Now we can see that the shape of the distribution goes quite along with that of the normal. Lets keep going and take a thousand samples.
+As we would expect, there is a clear trend for the variances to center at the theoretical mean.
+
+# Distribution
+
+Now, let's compare how does this distribution fits the normal distribution as the samples increase. Let's compare 10, 100, 1000 and 10000 samples.
+
 
 ```{r}
-x <- sapply(1:1000, function(x) mean(rexp(n=40, rate=0.2)))
-hist(x)
+dat <- data.frame(
+  x = c (
+    matrix(sapply(1:10, function(x) mean(rexp(n=obs, rate = r))), 10),
+    matrix(sapply(1:100, function(x) mean(rexp(n=obs, rate = r))), 10),
+    matrix(sapply(1:1000, function(x) mean(rexp(n=obs, rate = r))), 10),
+    matrix(sapply(1:10000, function(x) mean(rexp(n=obs, rate = r))), 10)
+  ),
+  size = factor(c(rep(10,10), rep(100,100), rep(1000,1000), rep(10000,10000)))
+)
+
+g <- ggplot(dat, aes(x = x, fill = size)) + 
+      geom_histogram(binwidth=.3, colour = "black", aes(y = ..density..)) + 
+      #stat_function(fun = dnorm, size = 2, arg = list(mean = 1/r, sd = sqrt(1/r^2/obs))) +
+      facet_grid(. ~ size) +
+      def_theme
+g
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+Now, lets do this same experiment, but normalizing the values so we can see if it fits the standard normal.
+
+The theoretical variance for a exponential distribution is 1/lambda^2, and the standard deviation is equals to E[X] (ok, I didn't know it, but I gave a look at https://en.wikipedia.org/wiki/Exponential_distribution). 
+
+So, the standard error would be `sqrt(Var(X)/n)`, in our case, `sqrt(1/r^2/n)`. 
+
+To show how the distribution fits a standard normal, we will draw a sample (40 obs, as always), subtract it's mean from E[X], and divide by `sqrt(1/(r^2)/n)` - that is, the theoretical standard error for a exponential distribution, and see if it fits a standard normal. Let's again compare 10, 100, 1000 and 10000 samples.
+
+```{r}
+dat <- data.frame(
+  x = c (
+    matrix(sapply(1:10, function(x) (1/r - mean(rexp(n=obs, rate = r)))/ sqrt(1/(r^2)/obs)), 10),
+    matrix(sapply(1:100, function(x) (1/r - mean(rexp(n=obs, rate = r)))/ sqrt(1/(r^2)/obs)), 10),
+    matrix(sapply(1:1000, function(x) (1/r - mean(rexp(n=obs, rate = r)))/ sqrt(1/(r^2)/obs)), 10),
+    matrix(sapply(1:10000, function(x) (1/r - mean(rexp(n=obs, rate = r)))/ sqrt(1/(r^2)/obs)), 10)
+  ),
+  size = factor(c(rep(10,10), rep(100,100), rep(1000,1000), rep(10000,10000)))
+)
+
+g <- ggplot(dat, aes(x = x, fill = size)) + 
+      geom_histogram(binwidth=.3, colour = "black", aes(y = ..density..)) + 
+      stat_function(fun = dnorm, size = 2) +
+      facet_grid(. ~ size) +
+      def_theme
+g
+```
+
+Now we can see that the shape of the distribution goes quite along with that of the standard normal. 
+
+
