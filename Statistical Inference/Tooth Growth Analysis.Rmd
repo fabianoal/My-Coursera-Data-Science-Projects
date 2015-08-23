@@ -1,0 +1,110 @@
+---
+title: "Tooth Growth Analysis"
+author: "Fabiano Andrade Lima"
+date: "August 23, 2015"
+output: html_document
+---
+
+```{r}
+data("ToothGrowth")
+library(ggplot2)
+library(dplyr)
+```
+
+# Preliminar Analysis
+
+On this work, we will analyse the data about tooth growing on 60 guinea pigs. Each animal received one of three dose levels of vitamin C (0.5, 1, and 2 mg/day) by one of two delivery methods, (orange juice or ascorbic acid (a form of vitamin C and coded as VC).
+
+First, let's gather some statistics from our data set. We will calculate mean and standard deviation for each group (supp and dose).
+
+```{r}
+m_summary <- ToothGrowth %>%
+  group_by(supp, dose) %>%
+  summarise(mean = mean(len), sd = sd(len))
+m_summary
+```
+
+From this little resume, we can see that that pigs with higher doses of vitamin C has bigger teeth, and the standard deviation of those if higher doses of vitamin C is lower then the ones with lower doses.
+
+Now, let's plot the data to see graphically how steep is this trend.
+
+```{r}
+g <- ggplot(ToothGrowth, aes(x=dose, y=len, color=supp)) +
+    geom_point(shape=1) +
+    xlab(label = "Dose") +
+    ylab(label = "Lengh") +
+    geom_smooth(method=lm)
+  
+g
+```
+
+From this preliminary analysis, it seems to exist a correlation between vitamin C dose and tooth length. It seems also that the pigs from the Orange Juice had bigger tooth at the beginning, and the increasing in the length was less steep then the ones of the Ascorbic Acid.
+
+# Tooth Growth Comparsion by Supp - Dose from 0.5 to 1
+
+First, lets compare the differences in terms of length, from pigs with doses of 0.5 and 1 mg, and then, determine the the 95% confidence interval.
+
+Let`s compare the statistics for this two groups (OJ and VC) with respect to the increasing of the doses from 0.5 to 1 mg.
+
+```{r}
+mean_oj_05_1 <- mean(ToothGrowth[ToothGrowth$dose==1 & ToothGrowth$supp=="OJ",c("len")] - ToothGrowth[ToothGrowth$dose==0.5 & ToothGrowth$supp=="OJ",c("len")])
+
+sd_oj_05_1 <- sd(ToothGrowth[ToothGrowth$dose==1 & ToothGrowth$supp=="OJ",c("len")] - ToothGrowth[ToothGrowth$dose==0.5 & ToothGrowth$supp=="OJ",c("len")])
+
+mean_vc_05_1 <- mean(ToothGrowth[ToothGrowth$dose==1 & ToothGrowth$supp=="VC",c("len")] - ToothGrowth[ToothGrowth$dose==0.5 & ToothGrowth$supp=="VC",c("len")])
+
+sd_vc_05_1 <- sd(ToothGrowth[ToothGrowth$dose==1 & ToothGrowth$supp=="VC",c("len")] - ToothGrowth[ToothGrowth$dose==0.5 & ToothGrowth$supp=="VC",c("len")])
+
+res <- cbind(c("Mean (OJ)", "Sd (OJ)", "Mean (VC)", "Sd (VC)"), c(mean_oj_05_1,sd_oj_05_1,mean_vc_05_1,sd_vc_05_1))
+
+colnames(res) <- c("Stats (1 - 0.5)","Value")
+
+res
+```
+
+The tooth size difference is bigger among the OJ group, and we already saw that the length mean on the OJ group, for both doses, is bigger that that of the VC group. So, the OJ group not only have bigger teeth, but also seems to respond better to higher doses of vitamin c. To see if this hypothesis is correct, lets analyse the t-confidence intervals
+
+```{r}
+t.test(ToothGrowth[ToothGrowth$dose==1 & ToothGrowth$supp=="OJ",c("len")], ToothGrowth[ToothGrowth$dose==0.5 & ToothGrowth$supp=="OJ",c("len")], paired = FALSE)$conf
+
+t.test(ToothGrowth[ToothGrowth$dose==1 & ToothGrowth$supp=="VC",c("len")], ToothGrowth[ToothGrowth$dose==0.5 & ToothGrowth$supp=="VC",c("len")], paired = FALSE)$conf
+```
+
+As we can see, both Ascorbic Acid and Vitamin C have confidence intervals above zero, which indicates that length of teeth responds to higher doses of vitamin C. We can also see that the confidence interval for the OJ group is wider than that of the VC group, which indicates that wider probability of positive response.
+
+# Tooth Growth Comparsion by Supp - Dose from 1 to 2
+
+Now, lets do the same exercise above but comparing doses of 1 and 2 mg.
+
+```{r}
+mean_oj_1_2 <- mean(ToothGrowth[ToothGrowth$dose==2 & ToothGrowth$supp=="OJ",c("len")] - ToothGrowth[ToothGrowth$dose==1 & ToothGrowth$supp=="OJ",c("len")])
+
+sd_oj_1_2 <- sd(ToothGrowth[ToothGrowth$dose==2 & ToothGrowth$supp=="OJ",c("len")] - ToothGrowth[ToothGrowth$dose==1 & ToothGrowth$supp=="OJ",c("len")])
+
+mean_vc_1_2 <- mean(ToothGrowth[ToothGrowth$dose==2 & ToothGrowth$supp=="VC",c("len")] - ToothGrowth[ToothGrowth$dose==1 & ToothGrowth$supp=="VC",c("len")])
+
+sd_vc_1_2 <- sd(ToothGrowth[ToothGrowth$dose==2 & ToothGrowth$supp=="VC",c("len")] - ToothGrowth[ToothGrowth$dose==1 & ToothGrowth$supp=="VC",c("len")])
+
+res_2 <- cbind(c("Mean (OJ)", "Sd (OJ)", "Mean (VC)", "Sd (VC)"), c(mean_oj_1_2,sd_oj_1_2,mean_vc_1_2,sd_vc_1_2))
+
+colnames(res_2) <- c("Stats (2 - 1)","Value")
+
+res_2
+```
+
+As we see here, the difference mean in teeth growth smaller on both groups, but specially in the OJ group, where it is less than half of the difference mean for the 1 - 0.5 dose.
+
+Lets examine the confidence intervals.
+
+```{r}
+t.test(ToothGrowth[ToothGrowth$dose==2 & ToothGrowth$supp=="OJ",c("len")], ToothGrowth[ToothGrowth$dose==1 & ToothGrowth$supp=="OJ",c("len")], paired = FALSE)$conf
+
+t.test(ToothGrowth[ToothGrowth$dose==2 & ToothGrowth$supp=="VC",c("len")], ToothGrowth[ToothGrowth$dose==1 & ToothGrowth$supp=="VC",c("len")], paired = FALSE)$conf
+```
+
+Both ranges are still above zero, thus, the increase of 1 mg to 2 mg is effective in the tooth growth. Here we see a different behavior from that of the 0.5 and 1 mg. We also already saw that the difference between teeth size for the OJ group for doses of 1 and 2 mg is smaller then the difference of the VC group. May be it's because the teeth could have reached the bigger possible size (around 26 - the mean for both OJ and VC group).
+
+
+
+
+

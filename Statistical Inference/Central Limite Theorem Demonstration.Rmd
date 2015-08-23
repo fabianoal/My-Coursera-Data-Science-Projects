@@ -2,7 +2,7 @@
 title: "Central Limit Theorem Demonstration With Exponential Distributions"
 author: "Fabiano A. Lima"
 date: "august, 18th, 2015"
-output: pdf_document
+output: html_document
 ---
 
 ```{r echo=F}
