@@ -43,7 +43,7 @@ shinyServer(
     })
 
     output$textMpg <- renderText({
-      paste("The predict mpg is", sprintf("%.2f",dopred()))
+      paste("The predicted mpg is ", sprintf("%.2f",dopred()), ' for the following informed values:')
     })
     
     output$valores <- renderText({
